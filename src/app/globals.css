@@ -21,3 +21,86 @@ body { outline: 6px solid magenta !important; }
   overflow:hidden;
 }
 
+/* === Dragon art (masked shimmer) === */
+.dragon-wrap {
+  width: min(780px, 92vw);
+  aspect-ratio: 1 / 1;            /* keeps it square */
+  margin: 3rem auto 2rem;
+  position: relative;
+  filter: drop-shadow(0 10px 30px rgba(255, 200, 60, 0.08))
+          drop-shadow(0 2px 12px rgba(255, 200, 60, 0.12));
+}
+
+/* The shimmer layer under the mask */
+.dragon-wrap::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  /* Moving gradient that "oscillates" through the dots */
+  background:
+    linear-gradient(90deg,
+      rgba(255,215,105,0.05) 0%,
+      rgba(255,215,105,0.18) 30%,
+      rgba(255,215,105,0.35) 50%,
+      rgba(255,215,105,0.18) 70%,
+      rgba(255,215,105,0.05) 100%);
+  background-size: 200% 100%;
+  animation: dragon-sweep 7s linear infinite;
+  /* Use the PNG as a mask so only the dots show */
+  -webkit-mask: url("/dragon.png") center / contain no-repeat;
+          mask: url("/dragon.png") center / contain no-repeat;
+  opacity: 0.9;
+}
+
+/* The base image (subtle, under the shimmer) */
+.dragon-wrap::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: url("/dragon.png") center / contain no-repeat;
+  opacity: 0.9;
+}
+
+/* Optional: tiny random-ish flicker on the dots */
+.dragon-flicker {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  -webkit-mask: url("/dragon.png") center / contain no-repeat;
+          mask: url("/dragon.png") center / contain no-repeat;
+  mix-blend-mode: screen;
+}
+.dragon-flicker > span {
+  position: absolute;
+  width: 22%;
+  height: 22%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,230,120,0.35), rgba(255,230,120,0) 60%);
+  animation: dragon-twinkle 4.5s ease-in-out infinite;
+  filter: blur(1px);
+  opacity: 0; /* start invisible */
+}
+.dragon-flicker > span:nth-child(1){ left:12%; top:18%; animation-delay: .2s; }
+.dragon-flicker > span:nth-child(2){ left:66%; top:22%; animation-delay: 1.1s; }
+.dragon-flicker > span:nth-child(3){ left:40%; top:64%; animation-delay: 2.0s; }
+.dragon-flicker > span:nth-child(4){ left:78%; top:72%; animation-delay: 2.9s; }
+
+@keyframes dragon-sweep {
+  0%   { background-position: 0% 0; }
+  50%  { background-position: 100% 0; }
+  100% { background-position: 0% 0; }
+}
+
+@keyframes dragon-twinkle {
+  0%, 70%, 100% { opacity: 0; transform: scale(0.9); }
+  25%          { opacity: 0.45; transform: scale(1.02); }
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .dragon-wrap::before,
+  .dragon-flicker > span {
+    animation: none !important;
+  }
+}
+

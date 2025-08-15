@@ -548,7 +548,7 @@ function ensureCategoryId(task: any): any {
                               key={task.id}
                               initial={{ opacity: 0, y: 5 }}
                               animate={{ opacity: 1, y: 0 }}
-                              className="flex items-center gap-2 p-2 bg-zinc-950/40 border border-zinc-800 rounded-xl hover:bg-zinc-900/60
+                              className="flex items-center gap-2 p-2 bg-zinc-950/40 border border-zinc-800 rounded-xl hover:bg-zinc-900/60"
                             >
                               {/* Checkbox */}
                               <Checkbox checked={task.completed} onChange={() => toggleTask(task.id)} />

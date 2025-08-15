@@ -853,8 +853,7 @@ function ensureCategoryId(task: any): any {
                     <tr className="text-left">
                       <th className="py-2 pr-3 font-medium">Art</th>
                       <th className="py-2 pr-3 font-medium">Code Name</th>
-                      <th className="py-2 pr-3 font-medium">Pre-Order</th>
-                      <th className="py-2 pr-3 font-medium">Early Access</th>
+                      <th className="py-2 pr-3 font-medium">Pre-Order</th>                
                       <th className="py-2 pr-3 font-medium">Release</th>
                       <th className="py-2 pl-3 font-medium text-right">Actions</th>
                     </tr>
@@ -879,9 +878,8 @@ function ensureCategoryId(task: any): any {
                           </div>
                         </td>
                         <td className="py-2 pr-3 text-zinc-100">{r.codeName || r.title || '—'}</td>
-                        <td className="py-2 pr-3 text-zinc-300">{r.preorderDate || '—'}</td>
-                        <td className="py-2 pr-3 text-zinc-300">{r.earlyAccessDate || '—'}</td>
-                        <td className="py-2 pr-3 text-zinc-300">{r.releaseDate || '—'}</td>
+                        <td className="py-2 pr-3 text-zinc-300">{formatMMDDYY(r.preorderDate)}</td>
+                        <td className="py-2 pr-3 text-zinc-300">{formatMMDDYY(r.releaseDate)}</td>
                         <td className="py-2 pl-3 text-right">
                           <div className="flex justify-end gap-2">
                             <Button variant="ghost" size="sm" onClick={() => openRelease(r.id)}>

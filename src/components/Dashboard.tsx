@@ -458,7 +458,7 @@ function ensureCategoryId(task: any): any {
     <div className="min-h-screen text-zinc-100 p-6">
       <div className="mx-auto max-w-[1600px] grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {/* Left column: Tasks */}
-        <Card>
+        <Card className="col-span-1 lg:col-span-2 xl:col-span-3">
           <CardContent>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold tracking-tight">Tasks</h2>
@@ -757,7 +757,7 @@ function ensureCategoryId(task: any): any {
         </Card>
 
         {/* Right column */}
-        <div className="space-y-6">
+        <div className="space-y-6 col-span-1">
           {/* Ideas */}
           <Card>
             <CardContent>

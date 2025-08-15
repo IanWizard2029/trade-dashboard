@@ -172,6 +172,24 @@ export default function Dashboard() {
   const [projects, setProjects] = useState(() => loadJSON('tradeMarketingProjects', []));
 
   const [newTask, setNewTask] = useState('');
+  // ---- Categories (very simple) ----
+  type Category = { id: number; name: string };
+  
+  // Default categories
+  const [categories, setCategories] = useState<Category[]>(
+    () => loadJSON('tradeMarketingCategories', [
+      { id: 1, name: 'Uncategorized' },
+      { id: 2, name: 'Retail' },
+      { id: 3, name: 'Creative' },
+      { id: 4, name: 'Ops' },
+    ])
+  );
+  
+  useEffect(() => saveJSON('tradeMarketingCategories', categories), [categories]);
+  
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number>(1); // default "Uncategorized"
+  const [groupByCategory, setGroupByCategory] = useState<boolean>(true);
   const [newIdeaTitle, setNewIdeaTitle] = useState('');
   const [newIdeaNotes, setNewIdeaNotes] = useState('');
   const [importOpen, setImportOpen] = useState(false);
@@ -217,11 +235,12 @@ export default function Dashboard() {
     (async () => {
       try {
         const s = await fetchAppState();
-        if (s.tasks) setTasks(s.tasks);
+        if (s.tasks) setTasks((s.tasks as any[]).map(ensureCategoryId));
         if (s.ideas) setIdeas(s.ideas);
         if (s.releases) setReleases(s.releases);
         if (s.archive) setArchive(s.archive);
         if (s.projects) setProjects(s.projects);
+        if (s.categories) setCategories(s.categories);
       } catch (e) {
         console.warn('Using local cache only', e);
       }
@@ -249,13 +268,13 @@ useEffect(() => {
 }, []);
   
   // --------- Debounced save to Supabase whenever state changes
-  useDebouncedSave({ tasks, ideas, releases, archive, projects }, 600, saveAppState);
+  useDebouncedSave({ tasks, ideas, releases, archive, projects, categories }, 600, saveAppState);
 
   // Handlers — Tasks
   const addTask = () => {
     const value = newTask.trim();
     if (!value) return;
-    setTasks((prev: any[]) => [...prev, { id: Date.now(), text: value, completed: false }]);
+    setTasks((prev: any[]) => [...prev, { id: Date.now(), text: value, completed: false, categoryId: selectedCategoryId }]);
     setNewTask('');
   };
   const toggleTask = (id: number) =>
@@ -298,6 +317,18 @@ useEffect(() => {
     a.click();
     URL.revokeObjectURL(url);
   };
+
+// ---- Category helpers ----
+function catName(catId?: number) {
+  const c = categories.find((c) => c.id === catId);
+  return c?.name ?? 'Uncategorized';
+}
+
+function ensureCategoryId(task: any): any {
+  // migrate older tasks that don't have a categoryId yet
+  return { ...task, categoryId: task.categoryId ?? 1 };
+}
+  
 // --- Edit existing tasks ---
   const startEditTask = (task: any) => {
     setEditingTaskId(task.id);
@@ -413,89 +444,258 @@ useEffect(() => {
           <CardContent>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold tracking-tight">Tasks</h2>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
-                  Import
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-zinc-400 flex items-center gap-2 mr-2">
+                  <input
+                    type="checkbox"
+                    checked={groupByCategory}
+                    onChange={(e) => setGroupByCategory(e.target.checked)}
+                    className="h-4 w-4 rounded border-zinc-600 bg-zinc-950/60"
+                  />
+                  Group by category
+                </label>
+              
+                <Input
+                  placeholder="New category"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  className="w-40"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const name = newCategoryName.trim();
+                    if (!name) return;
+                    const nextId = Math.max(...categories.map(c => c.id)) + 1;
+                    setCategories(prev => [...prev, { id: nextId, name }]);
+                    setNewCategoryName('');
+                  }}
+                >
+                  Add
                 </Button>
-                <Button variant="solid" size="sm" onClick={exportTasks}>
-                  Export
-                </Button>
+              
+                <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>Import</Button>
+                <Button variant="solid" size="sm" onClick={exportTasks}>Export</Button>
               </div>
             </div>
 
             <div className="flex gap-2 mb-4">
               <Input
+                className="flex-1"
                 placeholder="Add a new task…"
                 value={newTask}
                 onChange={(e) => setNewTask(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && addTask()}
               />
+              {/* Category select for new tasks */}
+              <select
+                value={selectedCategoryId}
+                onChange={(e) => setSelectedCategoryId(Number(e.target.value))}
+                className="h-9 px-2 rounded-lg bg-zinc-950/60 border border-zinc-800 text-zinc-100"
+                title="Category"
+              >
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
               <Button variant="solid" size="sm" onClick={addTask} disabled={!newTask.trim()}>
                 <Plus className="w-4 h-4 mr-1" /> Add
               </Button>
             </div>
 
+
             <div className="space-y-2.5">
-              {tasks.map((task: any) => (
-                <motion.div
-                  key={task.id}
-                  initial={{ opacity: 0, y: 5 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex items-center gap-3 p-2.5 bg-zinc-950/40 border border-zinc-800 rounded-xl hover:bg-zinc-900/60"
-                >
-                  <Checkbox checked={task.completed} onChange={() => toggleTask(task.id)} />
-                  <div className="flex-1 min-w-0">
-                    {editingTaskId === task.id ? (
-                      <Input
-                        value={editingTaskText}
-                        onChange={(e) => setEditingTaskText(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') saveEditTask();
-                          if (e.key === 'Escape') cancelEditTask();
+              {groupByCategory ? (
+                // -------- GROUPED BY CATEGORY --------
+                <>
+                  {categories
+                    .slice()
+                    .sort((a, b) => a.name.localeCompare(b.name))
+                    .map((cat) => {
+                      const catTasks = tasks
+                        .map(ensureCategoryId)
+                        .filter((t: any) => (t.categoryId ?? 1) === cat.id);
+            
+                      if (catTasks.length === 0) return null;
+            
+                      return (
+                        <div key={cat.id} className="space-y-2">
+                          <div className="text-xs uppercase tracking-wide text-zinc-500 mt-3">{cat.name}</div>
+            
+                          {catTasks.map((task: any) => (
+                            <motion.div
+                              key={task.id}
+                              initial={{ opacity: 0, y: 5 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              className="flex items-center gap-3 p-2.5 bg-zinc-950/40 border border-zinc-800 rounded-xl hover:bg-zinc-900/60"
+                            >
+                              {/* Checkbox */}
+                              <Checkbox checked={task.completed} onChange={() => toggleTask(task.id)} />
+            
+                              {/* Task text or inline edit input */}
+                              <div className="flex-1 min-w-0">
+                                {editingTaskId === task.id ? (
+                                  <Input
+                                    value={editingTaskText}
+                                    onChange={(e) => setEditingTaskText(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') saveEditTask();
+                                      if (e.key === 'Escape') cancelEditTask();
+                                    }}
+                                    autoFocus
+                                    placeholder="Edit task"
+                                  />
+                                ) : (
+                                  <span
+                                    className={task.completed ? 'line-through text-zinc-500' : 'text-zinc-100'}
+                                    title="Double-click to edit"
+                                    onDoubleClick={() => startEditTask(task)}
+                                  >
+                                    {task.text}
+                                  </span>
+                                )}
+                              </div>
+            
+                              {/* Category dropdown */}
+                              <select
+                                value={task.categoryId ?? 1}
+                                onChange={(e) => {
+                                  const cid = Number(e.target.value);
+                                  setTasks((prev: any[]) =>
+                                    prev.map((t: any) => (t.id === task.id ? { ...t, categoryId: cid } : t))
+                                  );
+                                }}
+                                className="h-8 px-2 rounded-lg bg-zinc-950/60 border border-zinc-800 text-zinc-300 text-xs"
+                                title="Change category"
+                              >
+                                {categories.map((c) => (
+                                  <option key={c.id} value={c.id}>
+                                    {c.name}
+                                  </option>
+                                ))}
+                              </select>
+            
+                              {/* Actions */}
+                              <div className="ml-2 flex items-center gap-1">
+                                {editingTaskId === task.id ? (
+                                  <>
+                                    <Button variant="solid" size="sm" onClick={saveEditTask}>Save</Button>
+                                    <Button variant="ghost" size="sm" onClick={cancelEditTask}>Cancel</Button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Button variant="ghost" size="sm" onClick={() => startEditTask(task)}>
+                                      <Pencil className="w-4 h-4 mr-1" /> Edit
+                                    </Button>
+                                    <Button variant="ghost" size="sm" onClick={() => completeTask(task.id)}>
+                                      <CheckCircle2 className="w-4 h-4 mr-1" /> Done
+                                    </Button>
+                                    <Button variant="ghost" size="sm" onClick={() => convertTaskToProject(task.id)}>
+                                      <FolderPlus className="w-4 h-4 mr-1" /> Project
+                                    </Button>
+                                    <Button variant="ghost" size="sm" onClick={() => removeTask(task.id)}>
+                                      <X className="w-4 h-4" />
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
+                            </motion.div>
+                          ))}
+                        </div>
+                      );
+                    })}
+                </>
+              ) : (
+                // -------- FLAT LIST (sorted by category name) --------
+                tasks
+                  .map(ensureCategoryId)
+                  .slice()
+                  .sort((a: any, b: any) => catName(a.categoryId).localeCompare(catName(b.categoryId)))
+                  .map((task: any) => (
+                    <motion.div
+                      key={task.id}
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="flex items-center gap-3 p-2.5 bg-zinc-950/40 border border-zinc-800 rounded-xl hover:bg-zinc-900/60"
+                    >
+                      {/* Checkbox */}
+                      <Checkbox checked={task.completed} onChange={() => toggleTask(task.id)} />
+            
+                      {/* Task text or inline edit input */}
+                      <div className="flex-1 min-w-0">
+                        {editingTaskId === task.id ? (
+                          <Input
+                            value={editingTaskText}
+                            onChange={(e) => setEditingTaskText(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') saveEditTask();
+                              if (e.key === 'Escape') cancelEditTask();
+                            }}
+                            autoFocus
+                            placeholder="Edit task"
+                          />
+                        ) : (
+                          <span
+                            className={task.completed ? 'line-through text-zinc-500' : 'text-zinc-100'}
+                            title="Double-click to edit"
+                            onDoubleClick={() => startEditTask(task)}
+                          >
+                            {task.text}
+                          </span>
+                        )}
+                      </div>
+            
+                      {/* Category dropdown */}
+                      <select
+                        value={task.categoryId ?? 1}
+                        onChange={(e) => {
+                          const cid = Number(e.target.value);
+                          setTasks((prev: any[]) =>
+                            prev.map((t: any) => (t.id === task.id ? { ...t, categoryId: cid } : t))
+                          );
                         }}
-                        autoFocus
-                        placeholder="Edit task"
-                      />
-                    ) : (
-                      <span
-                        className={task.completed ? 'line-through text-zinc-500' : 'text-zinc-100'}
-                        title="Double-click to edit"
-                        onDoubleClick={() => startEditTask(task)}
+                        className="h-8 px-2 rounded-lg bg-zinc-950/60 border border-zinc-800 text-zinc-300 text-xs"
+                        title="Change category"
                       >
-                        {task.text}
-                      </span>
-                    )}
-                  </div>
-                 <div className="ml-2 flex items-center gap-1">
-                  {editingTaskId === task.id ? (
-                    <>
-                      <Button variant="solid" size="sm" onClick={saveEditTask}>
-                        Save
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={cancelEditTask}>
-                        Cancel
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <Button variant="ghost" size="sm" onClick={() => startEditTask(task)}>
-                        <Pencil className="w-4 h-4 mr-1" /> Edit
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => completeTask(task.id)}>
-                        <CheckCircle2 className="w-4 h-4 mr-1" /> Done
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => convertTaskToProject(task.id)}>
-                        <FolderPlus className="w-4 h-4 mr-1" /> Project
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => removeTask(task.id)}>
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </>
-                  )}
-                </div>
-                </motion.div>
-              ))}
+                        {categories.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+            
+                      {/* Actions */}
+                      <div className="ml-2 flex items-center gap-1">
+                        {editingTaskId === task.id ? (
+                          <>
+                            <Button variant="solid" size="sm" onClick={saveEditTask}>Save</Button>
+                            <Button variant="ghost" size="sm" onClick={cancelEditTask}>Cancel</Button>
+                          </>
+                        ) : (
+                          <>
+                            <Button variant="ghost" size="sm" onClick={() => startEditTask(task)}>
+                              <Pencil className="w-4 h-4 mr-1" /> Edit
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => completeTask(task.id)}>
+                              <CheckCircle2 className="w-4 h-4 mr-1" /> Done
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => convertTaskToProject(task.id)}>
+                              <FolderPlus className="w-4 h-4 mr-1" /> Project
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => removeTask(task.id)}>
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </motion.div>
+                  ))
+              )}
             </div>
+
 
             {importOpen && (
               <div className="mt-4 p-4 border border-zinc-800 rounded-xl bg-zinc-950/40">

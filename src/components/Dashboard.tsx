@@ -177,12 +177,10 @@ export default function Dashboard() {
   const [importOpen, setImportOpen] = useState(false);
   const [importText, setImportText] = useState('');
 
-  const placeholderNews = [
-    { title: 'Wizards Announces New D&D Expansion', link: '#', pubDate: new Date().toISOString(), source: 'placeholder' },
-    { title: 'Top 10 D&D Campaign Settings Ranked', link: '#', pubDate: new Date().toISOString(), source: 'placeholder' },
-    { title: 'D&D Movie Sequel Rumors Surface', link: '#', pubDate: new Date().toISOString(), source: 'placeholder' },
-  ];
-  const [news, setNews] = useState(placeholderNews);
+  // News state (live from /api/news)
+  type NewsItem = { title: string; link: string; pubDate: string; source: string };
+  
+  const [news, setNews] = useState<NewsItem[]>([]);
   const [newsIdx, setNewsIdx] = useState(0);
   const [paused, setPaused] = useState(false);
 
@@ -228,6 +226,26 @@ export default function Dashboard() {
     })();
   }, []);
 
+// Load live D&D news from our server route once on mount
+useEffect(() => {
+  let canceled = false;
+
+  (async () => {
+    try {
+      const res = await fetch('/api/news', { cache: 'no-store' });
+      const json = await res.json();
+      if (!canceled && Array.isArray(json?.items)) {
+        setNews(json.items);
+        setNewsIdx(0);
+      }
+    } catch (e) {
+      console.warn('news fetch failed, keeping empty list', e);
+    }
+  })();
+
+  return () => { canceled = true; };
+}, []);
+  
   // --------- Debounced save to Supabase whenever state changes
   useDebouncedSave({ tasks, ideas, releases, archive, projects }, 600, saveAppState);
 
@@ -657,7 +675,9 @@ export default function Dashboard() {
                   <div className="text-xs text-zinc-500 mt-1">Source: {current.source}</div>
                 </motion.a>
               ) : (
-                <div className="p-5 text-sm text-zinc-500">No news available.</div>
+                <div className="p-5 text-sm text-zinc-500">
+                  {news.length === 0 ? 'Loading headlines…' : 'No news available.'}
+                </div>
               )}
             </CardContent>
           </Card>

@@ -102,19 +102,21 @@ function normalizeRelease(r: any) {
   console.assert(r2.skus.length === 1 && r2.skus[0].name === 'Booster', 'normalizeRelease (array) failed');
 })();
 
-// Format a YYYY-MM-DD (or any parsable date string) to MM/DD/YY
+// TZ-safe: format 'YYYY-MM-DD' to 'MM/DD/YY' without creating a Date
 function formatMMDDYY(dateStr?: string) {
   if (!dateStr) return '—';
-  // Avoid timezone shifting for plain YYYY-MM-DD strings
-  const [y, m, d] = dateStr.split('-').map(Number);
-  const dt =
-    y && m && d
-      ? new Date(Date.UTC(y, m - 1, d))
-      : new Date(dateStr);
-  return dt.toLocaleDateString('en-US', {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+  if (m) {
+    const [, y, mm, dd] = m;
+    return `${mm}/${dd}/${y.slice(2)}`;
+  }
+  // Fallback for any non-YYYY-MM-DD strings: format in UTC to avoid drift
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('en-US', {
     month: '2-digit',
     day: '2-digit',
     year: '2-digit',
+    timeZone: 'UTC',
   });
 }
 

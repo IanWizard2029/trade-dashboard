@@ -2,9 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Optional polish from earlier */
+/* Optional polish */
 :root { color-scheme: dark; }
-html, body { background: #0b0b0c; }
 
 /* softer scrollbars */
 *::-webkit-scrollbar{height:10px;width:10px}

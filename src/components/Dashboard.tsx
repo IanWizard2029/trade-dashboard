@@ -284,9 +284,6 @@ useEffect(() => {
 
   return () => { canceled = true; };
 }, []);
-  
-  // --------- Debounced save to Supabase whenever state changes
-  useDebouncedSave({ tasks, ideas, releases, archive, projects, categories }, 600, saveAppState);
 
   // Handlers — Tasks
   const addTask = () => {
@@ -452,6 +449,9 @@ function ensureCategoryId(task: any): any {
   };
 
   const current = news[newsIdx];
+
+ // --------- Debounced save to Supabase whenever state changes
+  useDebouncedSave({ tasks, ideas, releases, archive, projects, categories }, 600, saveAppState);
 
   // -------------------- UI --------------------
   return (

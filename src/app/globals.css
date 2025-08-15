@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* keep your existing tailwind directives at the top */
+/* Optional polish from earlier */
 :root { color-scheme: dark; }
 html, body { background: #0b0b0c; }
 
@@ -10,4 +10,3 @@ html, body { background: #0b0b0c; }
 *::-webkit-scrollbar{height:10px;width:10px}
 *::-webkit-scrollbar-thumb{background:#262626;border-radius:999px}
 *::-webkit-scrollbar-track{background:#111}
-

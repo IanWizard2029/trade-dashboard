@@ -12,3 +12,12 @@
 
 /* DEBUG: prove globals.css is loaded */
 body { outline: 6px solid magenta !important; }
+
+/* Clamp multi-line text to 2 lines (no plugin needed) */
+.line-clamp-2{
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+}
+

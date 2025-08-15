@@ -456,7 +456,7 @@ function ensureCategoryId(task: any): any {
   // -------------------- UI --------------------
   return (
     <div className="min-h-screen text-zinc-100 p-6">
-      <div className="mx-auto max-w-6xl grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
+      <div className="mx-auto max-w-[1600px] grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {/* Left column: Tasks */}
         <Card>
           <CardContent>
@@ -510,7 +510,7 @@ function ensureCategoryId(task: any): any {
               <select
                 value={selectedCategoryId}
                 onChange={(e) => setSelectedCategoryId(Number(e.target.value))}
-                className="h-9 px-2 rounded-lg bg-zinc-950/60 border border-zinc-800 text-zinc-100"
+                className="h-9 px-2 w-44 shrink-0 rounded-lg bg-zinc-950/60 border border-zinc-800 text-zinc-100"
                 title="Category"
               >
                 {categories.map((c) => (
@@ -548,7 +548,7 @@ function ensureCategoryId(task: any): any {
                               key={task.id}
                               initial={{ opacity: 0, y: 5 }}
                               animate={{ opacity: 1, y: 0 }}
-                              className="flex items-center gap-3 p-2.5 bg-zinc-950/40 border border-zinc-800 rounded-xl hover:bg-zinc-900/60"
+                              className="flex items-center gap-2 p-2 bg-zinc-950/40 border border-zinc-800 rounded-xl hover:bg-zinc-900/60
                             >
                               {/* Checkbox */}
                               <Checkbox checked={task.completed} onChange={() => toggleTask(task.id)} />
@@ -568,7 +568,7 @@ function ensureCategoryId(task: any): any {
                                   />
                                 ) : (
                                   <span
-                                    className={task.completed ? 'line-through text-zinc-500' : 'text-zinc-100'}
+                                    className={`${task.completed ? 'line-through text-zinc-500' : 'text-zinc-100'} line-clamp-2`}
                                     title="Double-click to edit"
                                     onDoubleClick={() => startEditTask(task)}
                                   >
@@ -586,7 +586,7 @@ function ensureCategoryId(task: any): any {
                                     prev.map((t: any) => (t.id === task.id ? { ...t, categoryId: cid } : t))
                                   );
                                 }}
-                                className="h-8 px-2 rounded-lg bg-zinc-950/60 border border-zinc-800 text-zinc-300 text-xs"
+                                className="h-8 px-2 w-44 shrink-0 rounded-lg bg-zinc-950/60 border border-zinc-800 text-zinc-300 text-xs"
                                 title="Change category"
                               >
                                 {categories.map((c) => (
@@ -597,7 +597,7 @@ function ensureCategoryId(task: any): any {
                               </select>
             
                               {/* Actions */}
-                              <div className="ml-2 flex items-center gap-1">
+                              <div className="ml-2 flex items-center gap-1 shrink-0">
                                 {editingTaskId === task.id ? (
                                   <>
                                     <Button variant="solid" size="sm" onClick={saveEditTask}>Save</Button>
@@ -637,7 +637,7 @@ function ensureCategoryId(task: any): any {
                       key={task.id}
                       initial={{ opacity: 0, y: 5 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="flex items-center gap-3 p-2.5 bg-zinc-950/40 border border-zinc-800 rounded-xl hover:bg-zinc-900/60"
+                      className="flex items-center gap-2 p-2 bg-zinc-950/40 border border-zinc-800 rounded-xl hover:bg-zinc-900/60"
                     >
                       {/* Checkbox */}
                       <Checkbox checked={task.completed} onChange={() => toggleTask(task.id)} />
@@ -657,7 +657,7 @@ function ensureCategoryId(task: any): any {
                           />
                         ) : (
                           <span
-                            className={task.completed ? 'line-through text-zinc-500' : 'text-zinc-100'}
+                            className={`${task.completed ? 'line-through text-zinc-500' : 'text-zinc-100'} line-clamp-2`}
                             title="Double-click to edit"
                             onDoubleClick={() => startEditTask(task)}
                           >
@@ -675,7 +675,7 @@ function ensureCategoryId(task: any): any {
                             prev.map((t: any) => (t.id === task.id ? { ...t, categoryId: cid } : t))
                           );
                         }}
-                        className="h-8 px-2 rounded-lg bg-zinc-950/60 border border-zinc-800 text-zinc-300 text-xs"
+                        className="h-8 px-2 w-44 shrink-0 rounded-lg bg-zinc-950/60 border border-zinc-800 text-zinc-300 text-xs"
                         title="Change category"
                       >
                         {categories.map((c) => (
@@ -686,7 +686,7 @@ function ensureCategoryId(task: any): any {
                       </select>
             
                       {/* Actions */}
-                      <div className="ml-2 flex items-center gap-1">
+                      <div className="ml-2 flex items-center gap-1 shrink-0">
                         {editingTaskId === task.id ? (
                           <>
                             <Button variant="solid" size="sm" onClick={saveEditTask}>Save</Button>

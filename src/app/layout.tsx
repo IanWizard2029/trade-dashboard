@@ -1,3 +1,6 @@
+// ✅ Import Tailwind first so it’s available everywhere
+import './globals.css';
+
 export const metadata = {
   title: 'Trade Marketing Dashboard',
   description: 'Lightweight dashboard powered by Supabase + Next.js',
@@ -8,15 +11,11 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // IMPORTANT: import the global Tailwind CSS here
-  // (Keep import inside the file, top-level is fine.)
   return (
-    <html lang="en">
-      <head />
-      <body>{children}</body>
+    <html lang="en" className="h-full">
+      <body className="min-h-screen bg-[#0b0b0c] text-zinc-100">
+        {children}
+      </body>
     </html>
   );
 }
-
-// This import MUST be at module scope (top of the file or below metadata)
-import './globals.css';

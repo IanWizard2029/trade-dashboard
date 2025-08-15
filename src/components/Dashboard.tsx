@@ -176,6 +176,8 @@ export default function Dashboard() {
   const [newIdeaNotes, setNewIdeaNotes] = useState('');
   const [importOpen, setImportOpen] = useState(false);
   const [importText, setImportText] = useState('');
+  const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
+  const [editingTaskText, setEditingTaskText] = useState('');
 
   // News state (live from /api/news)
   type NewsItem = { title: string; link: string; pubDate: string; source: string };
@@ -296,7 +298,32 @@ useEffect(() => {
     a.click();
     URL.revokeObjectURL(url);
   };
+// --- Edit existing tasks ---
+  const startEditTask = (task: any) => {
+    setEditingTaskId(task.id);
+    setEditingTaskText(task.text);
+  };
+  
+  const saveEditTask = () => {
+    if (editingTaskId == null) return;
+    const text = editingTaskText.trim();
+    if (!text) {
+      // Optional: prevent empty titles; just cancel if blank
+      setEditingTaskId(null);
+      setEditingTaskText('');
+      return;
+    }
+    setTasks((prev: any[]) => prev.map((t: any) => (t.id === editingTaskId ? { ...t, text } : t)));
+    setEditingTaskId(null);
+    setEditingTaskText('');
+  };
+  
+  const cancelEditTask = () => {
+    setEditingTaskId(null);
+    setEditingTaskText('');
+  };
 
+  
   // Handlers — Ideas
   const addIdea = () => {
     const title = newIdeaTitle.trim();
@@ -417,18 +444,55 @@ useEffect(() => {
                   className="flex items-center gap-3 p-2.5 bg-zinc-950/40 border border-zinc-800 rounded-xl hover:bg-zinc-900/60"
                 >
                   <Checkbox checked={task.completed} onChange={() => toggleTask(task.id)} />
-                  <span className={task.completed ? 'line-through text-zinc-500' : 'text-zinc-100'}>{task.text}</span>
-                  <div className="ml-auto flex items-center gap-1">
-                    <Button variant="ghost" size="sm" onClick={() => completeTask(task.id)}>
-                      <CheckCircle2 className="w-4 h-4 mr-1" /> Done
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => convertTaskToProject(task.id)}>
-                      <FolderPlus className="w-4 h-4 mr-1" /> Project
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => removeTask(task.id)}>
-                      <X className="w-4 h-4" />
-                    </Button>
+                  <div className="flex-1 min-w-0">
+                    {editingTaskId === task.id ? (
+                      <Input
+                        value={editingTaskText}
+                        onChange={(e) => setEditingTaskText(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') saveEditTask();
+                          if (e.key === 'Escape') cancelEditTask();
+                        }}
+                        autoFocus
+                        placeholder="Edit task"
+                      />
+                    ) : (
+                      <span
+                        className={task.completed ? 'line-through text-zinc-500' : 'text-zinc-100'}
+                        title="Double-click to edit"
+                        onDoubleClick={() => startEditTask(task)}
+                      >
+                        {task.text}
+                      </span>
+                    )}
                   </div>
+                 <div className="ml-2 flex items-center gap-1">
+                  {editingTaskId === task.id ? (
+                    <>
+                      <Button variant="solid" size="sm" onClick={saveEditTask}>
+                        Save
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={cancelEditTask}>
+                        Cancel
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button variant="ghost" size="sm" onClick={() => startEditTask(task)}>
+                        <Pencil className="w-4 h-4 mr-1" /> Edit
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => completeTask(task.id)}>
+                        <CheckCircle2 className="w-4 h-4 mr-1" /> Done
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => convertTaskToProject(task.id)}>
+                        <FolderPlus className="w-4 h-4 mr-1" /> Project
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => removeTask(task.id)}>
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </>
+                  )}
+                </div>
                 </motion.div>
               ))}
             </div>

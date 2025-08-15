@@ -1380,15 +1380,15 @@ function ensureCategoryId(task: any): any {
           </div>
         )}
       </div>
-      {/* Dragon art footer */}
-      <div className="dragon-wrap">
-        {/* Subtle twinkles over the masked image */}
-        <div className="dragon-flicker">
-          <span></span>
-          <span></span>
-          <span></span>
-          <span></span>
-        </div>
+      {/* Dragon GIF footer (full-bleed) */}
+      <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen my-10">
+        <img
+          src="/dragon.gif"
+          alt="Animated dragon"
+          className="block w-full h-auto"
+          loading="lazy"
+          decoding="async"
+        />
       </div>
     </div>
   );

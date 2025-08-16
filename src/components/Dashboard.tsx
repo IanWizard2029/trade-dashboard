@@ -202,6 +202,24 @@ export default function Dashboard() {
       { id: 4, name: 'Ops' },
     ])
   );
+
+// --- Marketing beats state ---
+const [beats, setBeats] = useState<any[]>(() => loadJSON('marketingBeats', []));
+
+// Quick-add form
+const [beatTitle, setBeatTitle] = useState('');
+const [beatStart, setBeatStart] = useState(() => {
+  const d = new Date(); 
+  const mm = String(d.getMonth()+1).padStart(2,'0'); 
+  const dd = String(d.getDate()).padStart(2,'0');
+  return `${d.getFullYear()}-${mm}-${dd}`;
+});
+const [beatEnd, setBeatEnd] = useState(''); // optional; blank = single-day
+
+// Calendar viewport (month being viewed)
+const today = new Date();
+const [calYear, setCalYear]   = useState(today.getFullYear());
+const [calMonth, setCalMonth] = useState(today.getMonth()); // 0-11
   
   useEffect(() => saveJSON('tradeMarketingCategories', categories), [categories]);
   
@@ -259,6 +277,7 @@ export default function Dashboard() {
         if (s.archive) setArchive(s.archive);
         if (s.projects) setProjects(s.projects);
         if (s.categories) setCategories(s.categories);
+        if (s.beats) setBeats(s.beats);
       } catch (e) {
         console.warn('Using local cache only', e);
       }
@@ -450,8 +469,59 @@ function ensureCategoryId(task: any): any {
 
   const current = news[newsIdx];
 
+function yyyymmdd(date: Date) {
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(date.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function buildMonthMatrix(year: number, monthIndex: number): Date[][] {
+  const first = new Date(Date.UTC(year, monthIndex, 1));
+  const start = new Date(first);
+  start.setUTCDate(1 - first.getUTCDay()); // back to Sunday
+  const weeks: Date[][] = [];
+  const cur = new Date(start);
+  for (let w = 0; w < 6; w++) {
+    const row: Date[] = [];
+    for (let d = 0; d < 7; d++) { row.push(new Date(cur)); cur.setUTCDate(cur.getUTCDate()+1); }
+    weeks.push(row);
+  }
+  return weeks;
+}
+
+function monthName(year: number, monthIndex: number) {
+  return new Date(year, monthIndex, 1).toLocaleString('en-US', { month: 'long', year: 'numeric' });
+}
+
+// overlap check for multi-day events
+function overlaps(cellISO: string, startISO: string, endISO?: string) {
+  const s = new Date(startISO + 'T00:00:00Z').getTime();
+  const e = new Date((endISO || startISO) + 'T00:00:00Z').getTime();
+  const c = new Date(cellISO + 'T00:00:00Z').getTime();
+  return c >= s && c <= e;
+}
+
+// short mm/dd label for list view
+function shortMMDD(iso: string) {
+  const [y,m,d] = iso.split('-'); return `${m}/${d}`;
+}
+
+function addBeat() {
+  const title = beatTitle.trim();
+  if (!title || !beatStart) return;
+  const start = beatStart;
+  const end   = beatEnd && beatEnd >= beatStart ? beatEnd : undefined; 
+  setBeats(prev => [{ id: Date.now()+Math.random(), title, start, end }, ...prev]);
+  setBeatTitle('');
+}
+
+function removeBeat(id: number) {
+  setBeats(prev => prev.filter(b => b.id !== id));
+}
+  
  // --------- Debounced save to Supabase whenever state changes
-  useDebouncedSave({ tasks, ideas, releases, archive, projects, categories }, 600, saveAppState);
+  useDebouncedSave({ tasks, ideas, releases, archive, projects, categories, beats }, 600, saveAppState);
 
   // -------------------- UI --------------------
   return (
@@ -1390,6 +1460,110 @@ function ensureCategoryId(task: any): any {
           decoding="async"
         />
       </div>
+      {/* Marketing Calendar */}
+<Card className="mt-10">
+  <CardContent className="p-5">
+    {/* Header: month nav + quick add */}
+    <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-4">
+      <div className="flex items-center gap-2">
+        <Button variant="outline" size="sm" onClick={() => {
+          const m = calMonth - 1; setCalYear(m < 0 ? calYear - 1 : calYear); setCalMonth((m+12)%12);
+        }}>Prev</Button>
+        <div className="text-lg font-semibold tracking-tight">{monthName(calYear, calMonth)}</div>
+        <Button variant="outline" size="sm" onClick={() => {
+          const m = calMonth + 1; setCalYear(m > 11 ? calYear + 1 : calYear); setCalMonth(m%12);
+        }}>Next</Button>
+        <Button variant="ghost" size="sm" onClick={() => { setCalYear(today.getFullYear()); setCalMonth(today.getMonth()); }}>Today</Button>
+      </div>
+
+      {/* Quick add beat */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Input placeholder="Add marketing beat (e.g., 'Retail email blast')" value={beatTitle} onChange={(e)=>setBeatTitle(e.target.value)} className="w-72" />
+        <Input type="date" value={beatStart} onChange={(e)=>setBeatStart(e.target.value)} title="Start date" />
+        <Input type="date" value={beatEnd} onChange={(e)=>setBeatEnd(e.target.value)} title="End date (optional)" />
+        <Button variant="solid" size="sm" onClick={addBeat} disabled={!beatTitle.trim()}>Add</Button>
+      </div>
+    </div>
+
+    {/* Weekday header */}
+    <div className="grid grid-cols-7 text-xs text-zinc-400">
+      {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => <div key={d} className="py-2 px-2">{d}</div>)}
+    </div>
+
+    {/* Month grid */}
+    <div className="grid grid-cols-7 gap-px rounded-xl overflow-hidden border border-zinc-800 bg-zinc-800">
+      {buildMonthMatrix(calYear, calMonth).flatMap((week, wi) =>
+        week.map((date, di) => {
+          const inMonth = date.getMonth() === calMonth;
+          const isToday = date.toDateString() === today.toDateString();
+          const iso = yyyymmdd(date);
+          const dayBeats = beats.filter(b => overlaps(iso, b.start, b.end));
+
+          return (
+            <div
+              key={`${wi}-${di}`}
+              className={`min-h-[120px] bg-zinc-950/50 ${inMonth ? 'opacity-100' : 'opacity-50'} ${isToday ? 'ring-1 ring-amber-400/40' : ''} p-2`}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <div className="text-[11px] text-zinc-500">{date.getDate()}</div>
+                {dayBeats.length > 0 && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-200">
+                    {dayBeats.length}
+                  </span>
+                )}
+              </div>
+
+              <div className="space-y-1">
+                {dayBeats.slice(0,3).map(b => {
+                  const isRange = !!b.end && b.end !== b.start;
+                  return (
+                    <div key={b.id} className={`text-[11px] px-2 py-1 rounded-md border ${isRange ? 'bg-amber-500/10 border-amber-500/30 text-amber-100' : 'bg-zinc-900/70 border-zinc-800 text-zinc-200'}`}>
+                      {b.title}{isRange ? ` (${shortMMDD(b.start)}–${shortMMDD(b.end!)})` : ''}
+                    </div>
+                  );
+                })}
+                {dayBeats.length > 3 && <div className="text-[10px] text-zinc-500">+{dayBeats.length-3} more…</div>}
+              </div>
+            </div>
+          );
+        })
+      )}
+    </div>
+
+    {/* Month list view */}
+    <div className="mt-4">
+      <div className="text-sm text-zinc-400 mb-2">Beats this month</div>
+      <div className="space-y-1">
+        {beats
+          .filter(b => {
+            const s = new Date(b.start + 'T00:00:00Z');
+            const e = new Date((b.end || b.start) + 'T00:00:00Z');
+            return (s.getUTCFullYear() === calYear && s.getUTCMonth() === calMonth) ||
+                   (e.getUTCFullYear() === calYear && e.getUTCMonth() === calMonth);
+          })
+          .sort((a,b) => a.start.localeCompare(b.start))
+          .map(b => (
+            <div key={b.id} className="flex items-center gap-3 text-sm">
+              <span className="text-zinc-400 w-28">
+                {b.end && b.end !== b.start ? `${shortMMDD(b.start)}–${shortMMDD(b.end)}` : shortMMDD(b.start)}
+              </span>
+              <span className="flex-1 text-zinc-200 truncate">{b.title}</span>
+              <Button variant="ghost" size="sm" onClick={() => removeBeat(b.id)}>Remove</Button>
+            </div>
+          ))
+        }
+        {beats.filter(b => {
+          const s = new Date(b.start + 'T00:00:00Z');
+          const e = new Date((b.end || b.start) + 'T00:00:00Z');
+          return (s.getUTCFullYear() === calYear && s.getUTCMonth() === calMonth) ||
+                 (e.getUTCFullYear() === calYear && e.getUTCMonth() === calMonth);
+        }).length === 0 && (
+          <div className="text-sm text-zinc-500">No beats this month yet.</div>
+        )}
+      </div>
+    </div>
+  </CardContent>
+</Card>
     </div>
   );
 }

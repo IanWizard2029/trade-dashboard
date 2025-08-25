@@ -1208,43 +1208,91 @@ function removeBeat(id: number) {
                             className="col-span-3"
                             placeholder="SKU code"
                             value={s.code}
-                            onChange={(e) =>
+                            onChange={(e) => {
+                              const value = e.target.value;
+                            
+                              // 1) local buffer
                               setEditRelease((r: any) => {
                                 const skus = [...r.skus];
-                                skus[idx] = { ...skus[idx], code: e.target.value };
+                                skus[idx] = { ...skus[idx], code: value };
                                 return { ...r, skus };
-                              })
-                            }
+                              });
+                            
+                              // 2) releases[]
+                              setReleases((prev: any[]) =>
+                                prev.map((rel: any) => {
+                                  if (rel.id !== editRelease.id) return rel;
+                                  const skus = [...(rel.skus || [])];
+                                  skus[idx] = { ...skus[idx], code: value };
+                                  return { ...rel, skus };
+                                })
+                              );
+                            }}
                           />
                           <Input
                             className="col-span-6"
                             placeholder="Name / description"
                             value={s.name}
-                            onChange={(e) =>
+                            onChange={(e) => {
+                              const value = e.target.value;
+                          
                               setEditRelease((r: any) => {
                                 const skus = [...r.skus];
-                                skus[idx] = { ...skus[idx], name: e.target.value };
+                                skus[idx] = { ...skus[idx], name: value };
                                 return { ...r, skus };
-                              })
-                            }
+                              });
+                          
+                              setReleases((prev: any[]) =>
+                                prev.map((rel: any) => {
+                                  if (rel.id !== editRelease.id) return rel;
+                                  const skus = [...(rel.skus || [])];
+                                  skus[idx] = { ...skus[idx], name: value };
+                                  return { ...rel, skus };
+                                })
+                              );
+                            }}
                           />
                           <Input
                             className="col-span-2"
                             placeholder="Price"
                             value={s.price}
-                            onChange={(e) =>
+                            onChange={(e) => {
+                              const value = e.target.value;
+                          
                               setEditRelease((r: any) => {
                                 const skus = [...r.skus];
-                                skus[idx] = { ...skus[idx], price: e.target.value };
+                                skus[idx] = { ...skus[idx], price: value };
                                 return { ...r, skus };
-                              })
-                            }
+                              });
+                          
+                              setReleases((prev: any[]) =>
+                                prev.map((rel: any) => {
+                                  if (rel.id !== editRelease.id) return rel;
+                                  const skus = [...(rel.skus || [])];
+                                  skus[idx] = { ...skus[idx], price: value };
+                                  return { ...rel, skus };
+                                })
+                              );
+                            }}
                           />
+
                           <Button
                             variant="ghost"
                             size="sm"
                             className="col-span-1"
-                            onClick={() => setEditRelease((r: any) => ({ ...r, skus: r.skus.filter((x: any) => x.id !== s.id) }))}
+                            onClick={() => {
+                              // 1) Remove in modal buffer
+                              setEditRelease((r: any) => ({ ...r, skus: r.skus.filter((x: any) => x.id !== s.id) }));
+                          
+                              // 2) Remove in releases[]
+                              setReleases((prev: any[]) =>
+                                prev.map((rel: any) =>
+                                  rel.id === editRelease.id
+                                    ? { ...rel, skus: (rel.skus || []).filter((x: any) => x.id !== s.id) }
+                                    : rel
+                                )
+                              );
+                            }}
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
@@ -1275,7 +1323,19 @@ function removeBeat(id: number) {
                           className="col-span-1"
                           onClick={() => {
                             if (!draftSku.code && !draftSku.name) return;
-                            setEditRelease((r: any) => ({ ...r, skus: [...r.skus, normalizeSku(draftSku)] }));
+                            const newSku = normalizeSku(draftSku);
+                        
+                            // 1) Update the local edit buffer
+                            setEditRelease((r: any) => ({ ...r, skus: [...r.skus, newSku] }));
+                        
+                            // 2) Immediately sync to the real releases[] array
+                            setReleases((prev: any[]) =>
+                              prev.map((r: any) =>
+                                r.id === editRelease.id ? { ...r, skus: [...(r.skus || []), newSku] } : r
+                              )
+                            );
+                        
+                            // 3) Clear the draft row
                             setDraftSku(normalizeSku({}));
                           }}
                         >

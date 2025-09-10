@@ -120,6 +120,41 @@ function formatMMDDYY(dateStr?: string) {
   });
 }
 
+// --- Release date helpers & sorter ---
+function parseISODateToUTCms(iso?: string | null) {
+  if (!iso) return null;
+  // Treat YYYY-MM-DD as UTC midnight to avoid timezone shifts
+  const t = Date.parse(iso + 'T00:00:00Z');
+  return Number.isNaN(t) ? null : t;
+}
+
+function sortByReleaseDateAsc(a: any, b: any) {
+  const ta = parseISODateToUTCms(a.releaseDate);
+  const tb = parseISODateToUTCms(b.releaseDate);
+
+  // Put items with no/invalid release date at the bottom
+  if (ta === null && tb === null) {
+    // tie-break: title, then id for stability
+    return (a.title || '').localeCompare(b.title || '') || (a.id - b.id);
+  }
+  if (ta === null) return 1;
+  if (tb === null) return -1;
+
+  // Sooner date comes first
+  if (ta !== tb) return ta - tb;
+
+  // tie-breakers if same day: preorder date, then title
+  const pa = parseISODateToUTCms(a.preorderDate);
+  const pb = parseISODateToUTCms(b.preorderDate);
+  if (pa !== pb) {
+    if (pa === null) return 1;
+    if (pb === null) return -1;
+    return pa - pb;
+  }
+  return (a.title || '').localeCompare(b.title || '') || (a.id - b.id);
+}
+
+
 // -------------------- Projects helpers --------------------
 function normalizeProject(p: any) {
   return {
@@ -954,34 +989,38 @@ function removeBeat(id: number) {
                         </td>
                       </tr>
                     )}
-                    {releases.map((r: any) => (
-                      <tr key={r.id} className="border-t border-zinc-800 hover:bg-zinc-900/50">
-                        <td className="py-2 pr-3">
-                          <div className="w-12 h-12 bg-zinc-950/60 border border-zinc-800 rounded-lg overflow-hidden flex items-center justify-center">
-                            {r.keyArt ? (
-                              <img src={r.keyArt} alt="art" className="w-full h-full object-cover" />
-                            ) : (
-                              <ImageIcon className="w-4 h-4 text-zinc-600" />
-                            )}
-                          </div>
-                        </td>
-                        <td className="py-2 pr-3 text-zinc-100">{r.codeName || r.title || '—'}</td>
-                        <td className="py-2 pr-3 text-zinc-300">{formatMMDDYY(r.preorderDate)}</td>
-                        <td className="py-2 pr-3 text-zinc-300">{formatMMDDYY(r.releaseDate)}</td>
-                        <td className="py-2 pl-3 text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button variant="ghost" size="sm" onClick={() => openRelease(r.id)}>
-                              <Eye className="w-4 h-4 mr-1" />
-                              Open
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => deleteRelease(r.id)}>
-                              <Trash2 className="w-4 h-4 mr-1" />
-                              Delete
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                  
+                    {releases
+                      .slice() // don’t mutate state
+                      .sort(sortByReleaseDateAsc)
+                      .map((r: any) => (
+                        <tr key={r.id} className="border-t border-zinc-800 hover:bg-zinc-900/50">
+                          <td className="py-2 pr-3">
+                            <div className="w-12 h-12 bg-zinc-950/60 border border-zinc-800 rounded-lg overflow-hidden flex items-center justify-center">
+                              {r.keyArt ? (
+                                <img src={r.keyArt} alt="art" className="w-full h-full object-cover" />
+                              ) : (
+                                <ImageIcon className="w-4 h-4 text-zinc-600" />
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-2 pr-3 text-zinc-100">{r.codeName || r.title || '—'}</td>
+                          <td className="py-2 pr-3 text-zinc-300">{formatMMDDYY(r.preorderDate)}</td>
+                          <td className="py-2 pr-3 text-zinc-300">{formatMMDDYY(r.releaseDate)}</td>
+                          <td className="py-2 pl-3 text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button variant="ghost" size="sm" onClick={() => openRelease(r.id)}>
+                                <Eye className="w-4 h-4 mr-1" />
+                                Open
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => deleteRelease(r.id)}>
+                                <Trash2 className="w-4 h-4 mr-1" />
+                                Delete
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
                   </tbody>
                 </table>
               </div>

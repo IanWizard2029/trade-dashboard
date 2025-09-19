@@ -1070,6 +1070,8 @@ function removeBeat(id: number) {
               )}
             </CardContent>
           </Card>
+        </div>
+      </div>
 
       {/* Edit Idea Modal */}
       {editingId !== null && (
@@ -1388,18 +1390,7 @@ function removeBeat(id: number) {
 
       {/* Projects */}
       <div className="mt-10">
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-zinc-50">Projects</h3>
-          <Button
-            variant="ghost"
-            className="text-zinc-400 hover:text-zinc-100"
-            onClick={() => setProjects(prev => prev.map(p => ({ ...p, expanded: false })))}
-            disabled={projects.length===0 || !projects.some(p=>p.expanded)}
-            title="Collapse all open projects"
-          >
-            Collapse All
-          </Button>
-        </div>
+        <h3 className="text-lg font-semibold text-zinc-50 mb-3">Projects</h3>
         {projects.length === 0 ? (
           <div className="text-sm text-zinc-500">
             No projects yet. Convert any task using the <span className="underline">Project</span> action.

@@ -172,6 +172,10 @@ function normalizeProject(p: any) {
     expanded: !!p.expanded,
   };
 }
+
+type ProjectFile = { id: number; name: string; url: string; size: number };
+type Project = { id: number; title: string; notes: string; files: ProjectFile[]; expanded: boolean };
+
 (function projectTests() {
   const p = normalizeProject({ title: 'Sell-in Kit', files: [{ name: 'brief.pdf', url: 'data:pdf', size: 10 }] });
   console.assert(p.title === 'Sell-in Kit' && p.files.length === 1 && !!p.files[0].id, 'normalizeProject failed');
@@ -222,7 +226,9 @@ export default function Dashboard() {
   );
   const [archive, setArchive] = useState(() => loadJSON('tradeMarketingTaskArchive', []));
   const [showArchive, setShowArchive] = useState(false);
-  const [projects, setProjects] = useState(() => loadJSON('tradeMarketingProjects', []));
+  const [projects, setProjects] = useState<Project[]>(
+    () => loadJSON('tradeMarketingProjects', []) as Project[]
+  );
 
   const [newTask, setNewTask] = useState('');
   // ---- Categories (very simple) ----
@@ -1395,10 +1401,8 @@ function removeBeat(id: number) {
           <Button
             variant="ghost"
             className="text-zinc-400 hover:text-zinc-100"
-            onClick={() =>
-              setProjects((prev: any[]) => prev.map((p: any) => ({ ...p, expanded: false })))
-            }
-            disabled={projects.length===0 || !projects.some(p=>p.expanded)}
+            onClick={() => setProjects(prev => prev.map(p => ({ ...p, expanded: false })))}
+            disabled={projects.length === 0 || !projects.some(p => p.expanded)}
             title="Collapse all open projects"
           >
             Collapse All

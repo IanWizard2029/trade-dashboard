@@ -1395,7 +1395,9 @@ function removeBeat(id: number) {
           <Button
             variant="ghost"
             className="text-zinc-400 hover:text-zinc-100"
-            onClick={() => setProjects((prev: any[]) => prev.map((p: any) => ({ ...p, expanded: false })))}
+            onClick={() =>
+              setProjects((prev: any[]) => prev.map((p: any) => ({ ...p, expanded: false })))
+            }
             disabled={projects.length===0 || !projects.some(p=>p.expanded)}
             title="Collapse all open projects"
           >

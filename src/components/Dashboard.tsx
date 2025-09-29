@@ -191,9 +191,6 @@ function normalizeProject(p: any): Project {
   };
 }
 
-type ProjectFile = { id: number; name: string; url: string; size: number };
-type Project = { id: number; title: string; notes: string; files: ProjectFile[]; expanded: boolean };
-
 (function projectTests() {
   const p = normalizeProject({ title: 'Sell-in Kit', files: [{ name: 'brief.pdf', url: 'data:pdf', size: 10 }] });
   console.assert(p.title === 'Sell-in Kit' && p.files.length === 1 && !!p.files[0].id, 'normalizeProject failed');

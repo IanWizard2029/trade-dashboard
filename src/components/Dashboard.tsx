@@ -156,13 +156,28 @@ function sortByReleaseDateAsc(a: any, b: any) {
 
 
 // -------------------- Projects helpers --------------------
-function normalizeProject(p: any) {
+// Types used by Projects
+type ProjectFile = { id: number; name: string; url: string; size: number };
+
+type Project = {
+  id: number;
+  title: string;
+  notes: string;
+  files: ProjectFile[];
+  expanded: boolean;
+  // NEW for archiving:
+  archived?: boolean;
+  archivedAt?: string;
+};
+
+
+function normalizeProject(p: any): Project {
   return {
     id: p.id ?? Date.now() + Math.random(),
     title: String(p.title || '').trim(),
     notes: String(p.notes || ''),
     files: Array.isArray(p.files)
-      ? p.files.map((f: any) => ({
+      ? p.files.map((f: any): ProjectFile => ({
           id: f.id ?? Date.now() + Math.random(),
           name: String(f.name || 'file'),
           url: String(f.url || ''),
@@ -170,6 +185,9 @@ function normalizeProject(p: any) {
         }))
       : [],
     expanded: !!p.expanded,
+    // NEW defaults for archiving
+    archived: !!p.archived,
+    archivedAt: p.archivedAt ? String(p.archivedAt) : undefined,
   };
 }
 
@@ -229,6 +247,14 @@ export default function Dashboard() {
   const [projects, setProjects] = useState<Project[]>(
     () => loadJSON('tradeMarketingProjects', []) as Project[]
   );
+  // Archive for projects (like task archive)
+  const [archivedProjects, setArchivedProjects] = useState<Project[]>(
+    () => loadJSON('tradeMarketingArchivedProjects', []) as Project[]
+  );
+  
+  // Toggle UI for the archived list
+  const [showArchivedProjects, setShowArchivedProjects] = useState(false);  
+
 
   const [newTask, setNewTask] = useState('');
   // ---- Categories (very simple) ----
@@ -299,6 +325,7 @@ const [calMonth, setCalMonth] = useState(today.getMonth()); // 0-11
   useEffect(() => saveJSON('tradeMarketingReleases', releases), [releases]);
   useEffect(() => saveJSON('tradeMarketingTaskArchive', archive), [archive]);
   useEffect(() => saveJSON('tradeMarketingProjects', projects), [projects]);
+  useEffect(() => saveJSON('tradeMarketingArchivedProjects', archivedProjects), [archivedProjects]);
 
   // Auto-rotate news
   useEffect(() => {
@@ -319,6 +346,7 @@ const [calMonth, setCalMonth] = useState(today.getMonth()); // 0-11
         if (s.projects) setProjects(s.projects);
         if (s.categories) setCategories(s.categories);
         if (s.beats) setBeats(s.beats);
+        if (s.archivedProjects) setArchivedProjects(s.archivedProjects);
       } catch (e) {
         console.warn('Using local cache only', e);
       }
@@ -562,7 +590,37 @@ function removeBeat(id: number) {
 }
   
  // --------- Debounced save to Supabase whenever state changes
-  useDebouncedSave({ tasks, ideas, releases, archive, projects, categories, beats }, 600, saveAppState);
+  useDebouncedSave({ tasks, ideas, releases, archive, projects, archivedProjects, categories, beats }, 600, saveAppState);
+
+// Move a project to the archived list
+function archiveProject(id: number) {
+  setProjects(prev => {
+    const p = prev.find(x => x.id === id);
+    const rest = prev.filter(x => x.id !== id);
+    if (p) {
+      setArchivedProjects(a => [
+        { ...p, archived: true, archivedAt: new Date().toISOString(), expanded: false },
+        ...a,
+      ]);
+    }
+    return rest;
+  });
+}
+
+// Bring a project back from archive
+function restoreProject(id: number) {
+  setArchivedProjects(prev => {
+    const p = prev.find(x => x.id === id);
+    const rest = prev.filter(x => x.id !== id);
+    if (p) setProjects(list => [{ ...p, archived: false, archivedAt: undefined }, ...list]);
+    return rest;
+  });
+}
+
+// Permanently remove an archived project
+function deleteArchivedProject(id: number) {
+  setArchivedProjects(prev => prev.filter(p => p.id !== id));
+}
 
   // -------------------- UI --------------------
   return (
@@ -1398,15 +1456,27 @@ function removeBeat(id: number) {
       <div className="mt-10">
         <div className="mb-3 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-zinc-50">Projects</h3>
-          <Button
-            variant="ghost"
-            className="text-zinc-400 hover:text-zinc-100"
-            onClick={() => setProjects(prev => prev.map(p => ({ ...p, expanded: false })))}
-            disabled={projects.length === 0 || !projects.some(p => p.expanded)}
-            title="Collapse all open projects"
-          >
-            Collapse All
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              className="text-zinc-400 hover:text-zinc-100"
+              onClick={() => setProjects(prev => prev.map(p => ({ ...p, expanded: false })))}
+              disabled={projects.length === 0 || !projects.some(p => p.expanded)}
+              title="Collapse all open projects"
+            >
+              Collapse All
+            </Button>
+        
+            {/* NEW: toggle archived list */}
+            <Button
+              variant="ghost"
+              className="text-zinc-400 hover:text-zinc-100"
+              onClick={() => setShowArchivedProjects(v => !v)}
+              title="Show archived projects"
+            >
+              {showArchivedProjects ? 'Hide' : 'Show'} Archived ({archivedProjects.length})
+            </Button>
+          </div>
         </div>
         {projects.length === 0 ? (
           <div className="text-sm text-zinc-500">
@@ -1514,11 +1584,20 @@ function removeBeat(id: number) {
                               </ul>
                             )}
                           </div>
-                          <div className="flex justify-end">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => archiveProject(p.id)}
+                              title="Move to archive"
+                            >
+                              Archive Project
+                            </Button>
+                          
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => setProjects((prev: any) => prev.filter((x: any) => x.id !== p.id))}
+                              onClick={() => setProjects(prev => prev.filter(x => x.id !== p.id))}
                             >
                               Delete Project
                             </Button>
@@ -1533,6 +1612,55 @@ function removeBeat(id: number) {
           </div>
         )}
       </div>
+      {/* Archived projects */}
+      {showArchivedProjects && (
+        <div className="mt-6">
+          <div className="text-sm text-zinc-400 mb-2">Archived Projects</div>
+      
+          {archivedProjects.length === 0 ? (
+            <div className="text-sm text-zinc-500">No archived projects.</div>
+          ) : (
+            <div className="space-y-2">
+              {archivedProjects.map((p) => (
+                <div
+                  key={p.id}
+                  className="flex items-center gap-3 p-3 bg-zinc-950/40 border border-zinc-800 rounded-xl"
+                >
+                  {/* Title + timestamp */}
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-zinc-200 truncate">
+                      {p.title || 'Untitled Project'}
+                    </div>
+                    <div className="text-xs text-zinc-500">
+                      Archived {p.archivedAt ? new Date(p.archivedAt).toLocaleString() : ''}
+                    </div>
+                  </div>
+      
+                  {/* Actions */}
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => restoreProject(p.id)}
+                      title="Move this back to active projects"
+                    >
+                      Restore
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => deleteArchivedProject(p.id)}
+                      title="Delete permanently"
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       {/* Dragon GIF footer (full-bleed) */}
       <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen my-10">
         <img

@@ -585,7 +585,126 @@ function addBeat() {
 function removeBeat(id: number) {
   setBeats(prev => prev.filter(b => b.id !== id));
 }
-  
+ 
+ // ---------- Export helpers ----------
+function mdEscape(s: string): string {
+  // Minimal escaping so markdown headings/lists don’t break
+  return String(s ?? '')
+    .replace(/#/g, '\\#')
+    .replace(/\*/g, '\\*')
+    .replace(/_/g, '\\_')
+    .replace(/\|/g, '\\|');
+}
+
+function prettyBytes(n?: number): string {
+  if (!n || !Number.isFinite(n)) return '';
+  const units = ['B','KB','MB','GB','TB'];
+  let i = 0; let v = n;
+  while (v >= 1024 && i < units.length-1) { v /= 1024; i++; }
+  return `${v.toFixed(v >= 10 ? 0 : 1)} ${units[i]}`;
+}
+
+function formatDateISOish(iso?: string): string {
+  if (!iso) return '';
+  try {
+    const d = new Date(iso);
+    return d.toLocaleString('en-US', { year:'numeric', month:'short', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+  } catch { return iso; }
+}
+ 
+function buildProjectsMarkdown(projects: Project[]): string {
+  const active = projects.filter(p => !p.archived);
+  const archived = projects.filter(p => p.archived);
+
+  const lines: string[] = [];
+  const generatedAt = new Date().toISOString();
+
+  lines.push(`# Projects Export`);
+  lines.push('');
+  lines.push(`_Generated: ${generatedAt}_`);
+  lines.push('');
+  lines.push(`Total projects: ${projects.length} (Active: ${active.length}, Archived: ${archived.length})`);
+  lines.push('');
+  lines.push(`---`);
+  lines.push('');
+
+  function sectionFor(list: Project[], title: string) {
+    if (list.length === 0) {
+      lines.push(`## ${title}`);
+      lines.push('');
+      lines.push(`_(none)_`);
+      lines.push('');
+      return;
+    }
+    lines.push(`## ${title}`);
+    lines.push('');
+    list.forEach((p, idx) => {
+      lines.push(`### ${idx+1}. ${mdEscape(p.title || 'Untitled Project')}`);
+      if (p.archived && p.archivedAt) {
+        lines.push(`- **Status:** Archived (${formatDateISOish(p.archivedAt)})`);
+      } else {
+        lines.push(`- **Status:** Active`);
+      }
+      lines.push(`- **Notes:**`);
+      lines.push('');
+      lines.push(p.notes ? mdEscape(p.notes) : '_(no notes)_');
+      lines.push('');
+      // Files
+      if (Array.isArray(p.files) && p.files.length) {
+        lines.push(`- **Files:**`);
+        p.files.forEach(f => {
+          const isDataUrl = typeof f.url === 'string' && f.url.startsWith('data:');
+          const label = `• ${mdEscape(f.name)}${f.size ? ` (${prettyBytes(f.size)})` : ''}`;
+          if (!isDataUrl && f.url) {
+            lines.push(`  - [${label}](${f.url})`);
+          } else {
+            lines.push(`  - ${label}`);
+          }
+        });
+      } else {
+        lines.push(`- **Files:** _(none)_`);
+      }
+      lines.push('');
+    });
+  }
+
+  sectionFor(active, 'Active Projects');
+  lines.push('---');
+  lines.push('');
+  sectionFor(archived, 'Archived Projects');
+
+  return lines.join('\n');
+}
+
+function downloadTextFile(filename: string, text: string) {
+  const blob = new Blob([text], { type: 'text/markdown;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Call this from the button
+function exportProjectsMarkdown(allProjects: Project[]) {
+  const md = buildProjectsMarkdown(allProjects);
+  const ts = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-'); // e.g. 2025-09-19-15-07-00
+  downloadTextFile(`projects_export_${ts}.md`, md);
+}
+
+function exportProjectsJSON(allProjects: Project[]) {
+  const json = JSON.stringify(allProjects, null, 2);
+  const ts = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `projects_export_${ts}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
  // --------- Debounced save to Supabase whenever state changes
   useDebouncedSave({ tasks, ideas, releases, archive, projects, archivedProjects, categories, beats }, 600, saveAppState);
 
@@ -1453,25 +1572,38 @@ function deleteArchivedProject(id: number) {
       <div className="mt-10">
         <div className="mb-3 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-zinc-50">Projects</h3>
+        
+          {/* Button group: Export MD, Export JSON, Collapse All */}
           <div className="flex items-center gap-2">
             <Button
+              variant="outline"
+              size="sm"
+              onClick={() => exportProjectsMarkdown(projects)}
+              disabled={projects.length === 0}
+              title="Export all projects as Markdown"
+            >
+              Export
+            </Button>
+        
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => exportProjectsJSON(projects)}
+              disabled={projects.length === 0}
+              title="Export all projects as JSON"
+            >
+              Export JSON
+            </Button>
+        
+            <Button
               variant="ghost"
+              size="sm"
               className="text-zinc-400 hover:text-zinc-100"
-              onClick={() => setProjects(prev => prev.map(p => ({ ...p, expanded: false })))}
-              disabled={projects.length === 0 || !projects.some(p => p.expanded)}
+              onClick={() => setProjects((prev: any[]) => prev.map((p: any) => ({ ...p, expanded: false })))}
+              disabled={projects.length === 0 || !projects.some((p: any) => p.expanded)}
               title="Collapse all open projects"
             >
               Collapse All
-            </Button>
-        
-            {/* NEW: toggle archived list */}
-            <Button
-              variant="ghost"
-              className="text-zinc-400 hover:text-zinc-100"
-              onClick={() => setShowArchivedProjects(v => !v)}
-              title="Show archived projects"
-            >
-              {showArchivedProjects ? 'Hide' : 'Show'} Archived ({archivedProjects.length})
             </Button>
           </div>
         </div>

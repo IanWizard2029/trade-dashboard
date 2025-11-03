@@ -509,8 +509,6 @@ function ensureCategoryId(task: any): any {
     setDraftSku(normalizeSku({}));
     setAddOpen(false);
   };
-
-  const [showArchivedProjects, setShowArchivedProjects] = useState(false);
   
   // File readers
   const readImageAsDataUrl = (file: File | undefined | null, cb: (url: string) => void) => {
@@ -1606,6 +1604,15 @@ function deleteArchivedProject(id: number) {
               title="Collapse all open projects"
             >
               Collapse All
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowArchivedProjects((v) => !v)}
+              title="Toggle archived projects"
+            >
+              <FolderOpen className="w-4 h-4 mr-2" />
+              {showArchivedProjects ? 'Hide' : 'Show'} Archived ({archivedProjects.length})
             </Button>
           </div>
         </div>

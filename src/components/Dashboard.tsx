@@ -510,6 +510,8 @@ function ensureCategoryId(task: any): any {
     setAddOpen(false);
   };
 
+  const [showArchivedProjects, setShowArchivedProjects] = useState(false);
+  
   // File readers
   const readImageAsDataUrl = (file: File | undefined | null, cb: (url: string) => void) => {
     if (!file) return;
